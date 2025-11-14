@@ -1,5 +1,6 @@
 namespace FinFriend.Models;
 
+using System.ComponentModel.DataAnnotations.Schema;
 
 public enum TransactionType
 {
@@ -19,9 +20,11 @@ public class Transaction
 
     //racuni
     public int? SourceAccountId { get; set; }
+   
     public Account? SourceAccount { get; set; }
 
     public int? DestinationAccountId { get; set; }
+
     public Account? DestinationAccount { get; set; }
     
 

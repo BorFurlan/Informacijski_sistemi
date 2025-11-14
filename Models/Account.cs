@@ -21,45 +21,32 @@ public class Account
     public decimal CurrentBalance { get; set; }
 
     //podatki o uporabniku
-    public int? UserId { get; set; } //ce je null, potem je racun globalen
+    public string? UserId { get; set; } //ce je null, potem je racun globalen
     public User? User { get; set; }
 
 
     //morebiti za prikaz imas se boolean vkljucenost v skupnem sestevku
     public bool IsIncludedInTotal { get; set; }
-    //seznam transakcij povezanih z racunom
-    public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
+    //seznami transakcij povezanih z racunom (kot vir in kot cilj)
+    public ICollection<Transaction> SourceTransactions { get; set; } = new List<Transaction>();
+    public ICollection<Transaction> DestinationTransactions { get; set; } = new List<Transaction>();
 
-//izracunaj trenutno stanje racuna
+//izracunaj trenutno stanje racuna -> tipi morajo biti upostevani v primeru, da razlikujemo, če ne lahko samo sestejemo
     public void CalculateCurrentBalance()
     {
         CurrentBalance = InitialBalance;
-        foreach (var transaction in Transactions)
+
+        //odstejes vse transakcije iz source transactions (preveri se po tipu)
+        foreach (var t in SourceTransactions)
         {
-            switch (transaction.Type)
-            {
-                case TransactionType.Income:
-                    CurrentBalance += transaction.Amount;
-                    break;
+            CurrentBalance -= t.Amount;   
+        }
 
-                case TransactionType.Expense:
-                    CurrentBalance -= transaction.Amount;
-                    break;
-                case TransactionType.Transfer:
-                    if (transaction.SourceAccountId == AccountId)
-                    {
-                        //denar odtece iz tega racuna
-                        CurrentBalance -= transaction.Amount;
-                    }
-                    else if (transaction.DestinationAccountId == AccountId)
-                    {
-                        //denar prispe na ta racun
-                        CurrentBalance += transaction.Amount;
-                    }
-                    break;
-
-
-            }
+        // sestejes vse transakcije iz destination transactions (preveri se po tipu)
+        foreach (var t in DestinationTransactions)
+        {
+           CurrentBalance += t.Amount;
+            
         }
     }
 }

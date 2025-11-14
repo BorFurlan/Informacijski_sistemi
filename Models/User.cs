@@ -1,7 +1,7 @@
 namespace FinFriend.Models;
 using Microsoft.AspNetCore.Identity;
 
-public class User : IdentityUser<int>
+public class User : IdentityUser
 {
     //je ze podedovano iz IdentityUser
     //public int UserId { get; set; }
