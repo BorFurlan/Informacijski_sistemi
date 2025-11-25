@@ -50,7 +50,12 @@ namespace FinFriend.Controllers
         // GET: Transactions/Create
         public IActionResult Create()
         {
-            ViewData["CategoryId"] = new SelectList(_context.Categories, "CategoryId", "CategoryId");
+            ViewData["CategoryId"] = new SelectList(
+                _context.Categories.Select(c => new { c.CategoryId, Display = $"{c.CategoryId} - {c.Name}" }),
+                "CategoryId",
+                "Display"
+            );
+            ViewData["TransactionTypeId"] = new SelectList(Enum.GetValues(typeof(TransactionType)).Cast<TransactionType>().Select(t => new { Value = t, Text = t.ToString() }), "Value", "Text");
             ViewData["DestinationAccountId"] = new SelectList(_context.Accounts, "AccountId", "AccountId");
             ViewData["SourceAccountId"] = new SelectList(_context.Accounts, "AccountId", "AccountId");
             return View();
