@@ -62,7 +62,7 @@ namespace FinFriend.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("AccountId,Type,Name,InitialBalance,CurrentBalance,UserId,IsIncludedInTotal")] Account account)
+        public async Task<IActionResult> Create([Bind("AccountId,Type,Name,InitialBalance,UserId,IsIncludedInTotal")] Account account)
         {
             if (!User?.Identity?.IsAuthenticated ?? true) 
                 return Challenge();
@@ -77,6 +77,7 @@ namespace FinFriend.Controllers
 
             if (ModelState.IsValid)
             {
+                account.CurrentBalance = account.InitialBalance;
                 _context.Add(account);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
