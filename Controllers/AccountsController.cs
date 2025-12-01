@@ -48,7 +48,7 @@ namespace FinFriend.Controllers
         // GET: Accounts/Create
         public IActionResult Create()
         {
-            ViewData["UserId"] = new SelectList(_context.Users, "Id", "Id");
+            ViewData["AccountType"] = new SelectList(Enum.GetValues(typeof(AccountType)).Cast<AccountType>().Select(t => new { Value = t, Text = t.ToString() }), "Value", "Text");
             return View();
         }
 

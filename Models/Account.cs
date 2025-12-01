@@ -21,7 +21,7 @@ public class Account
     public decimal CurrentBalance { get; set; }
 
     //podatki o uporabniku
-    public string? UserId { get; set; } //ce je null, potem je racun globalen
+    public string? UserId { get; set; } 
     public User? User { get; set; }
 
 
