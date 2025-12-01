@@ -7,9 +7,10 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using FinFriend.Data;
 using FinFriend.Models;
-
+using Microsoft.AspNetCore.Authorization;
 namespace FinFriend.Controllers
 {
+    [Authorize]
     public class AccountsController : Controller
     {
         private readonly ApplicationDbContext _context;

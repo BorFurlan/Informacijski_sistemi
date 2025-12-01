@@ -7,9 +7,11 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using FinFriend.Data;
 using FinFriend.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace FinFriend.Controllers
 {
+    [Authorize]
     public class TransactionsController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -58,6 +60,7 @@ namespace FinFriend.Controllers
             ViewData["TransactionTypeId"] = new SelectList(Enum.GetValues(typeof(TransactionType)).Cast<TransactionType>().Select(t => new { Value = t, Text = t.ToString() }), "Value", "Text");
             ViewData["DestinationAccountId"] = new SelectList(_context.Accounts, "AccountId", "AccountId");
             ViewData["SourceAccountId"] = new SelectList(_context.Accounts, "AccountId", "AccountId");
+
             return View();
         }
 
