@@ -8,6 +8,9 @@ using Microsoft.EntityFrameworkCore;
 using FinFriend.Data;
 using FinFriend.Models;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
+
+
 namespace FinFriend.Controllers
 {
     [Authorize]
@@ -43,6 +46,7 @@ namespace FinFriend.Controllers
                 return NotFound();
             }
 
+            ViewData["UserName"] = new SelectList(_context.Users, "UserName", "UserName", account.User.UserName);
             return View(account);
         }
 
@@ -60,6 +64,17 @@ namespace FinFriend.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("AccountId,Type,Name,InitialBalance,CurrentBalance,UserId,IsIncludedInTotal")] Account account)
         {
+            if (!User?.Identity?.IsAuthenticated ?? true) 
+                return Challenge();
+
+            // set owner from ClaimsPrincipal (server-side)
+            account.UserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (account.User == null)
+            {                
+                account.User = await GetCurrentUserAsync();
+            }
+
             if (ModelState.IsValid)
             {
                 _context.Add(account);
@@ -83,7 +98,7 @@ namespace FinFriend.Controllers
             {
                 return NotFound();
             }
-            ViewData["UserId"] = new SelectList(_context.Users, "Id", "Id", account.UserId);
+            ViewData["AccountType"] = new SelectList(Enum.GetValues(typeof(AccountType)).Cast<AccountType>().Select(t => new { Value = t, Text = t.ToString() }), "Value", "Text");
             return View(account);
         }
 
@@ -103,6 +118,7 @@ namespace FinFriend.Controllers
             {
                 try
                 {
+                    account.User = await GetCurrentUserAsync();
                     _context.Update(account);
                     await _context.SaveChangesAsync();
                 }
@@ -119,7 +135,8 @@ namespace FinFriend.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["UserId"] = new SelectList(_context.Users, "Id", "Id", account.UserId);
+
+            ViewData["AccountType"] = new SelectList(Enum.GetValues(typeof(AccountType)).Cast<AccountType>().Select(t => new { Value = t, Text = t.ToString() }), "Value", "Text");
             return View(account);
         }
 
@@ -161,5 +178,17 @@ namespace FinFriend.Controllers
         {
             return _context.Accounts.Any(e => e.AccountId == id);
         }
+    
+
+        private async Task<User?> GetCurrentUserAsync()
+        {
+            var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier);
+
+           if (string.IsNullOrEmpty(userId)) return null;
+
+            return await _context.Users
+                .Where(u => u.Id == userId)
+                .FirstOrDefaultAsync();
+        }    
     }
 }
