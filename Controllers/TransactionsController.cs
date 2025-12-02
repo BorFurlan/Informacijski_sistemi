@@ -52,14 +52,25 @@ namespace FinFriend.Controllers
         // GET: Transactions/Create
         public IActionResult Create()
         {
+            ViewData["TransactionTypeId"] = new SelectList(Enum.GetValues(typeof(TransactionType)).Cast<TransactionType>().Select(t => new { Value = t, Text = t.ToString() }), "Value", "Text");
+            
+            ViewData["SourceAccountId"] = new SelectList(
+                _context.Accounts.Select(a => new { a.AccountId, Display = $"{a.Name}" }),
+                "AccountId",
+                "Display"
+            );
+            
+            ViewData["DestinationAccountId"] = new SelectList(
+                 _context.Accounts.Select(a => new { a.AccountId, Display = $"{a.Name}" }),
+                "AccountId",
+                "Display"
+             );
+
             ViewData["CategoryId"] = new SelectList(
-                _context.Categories.Select(c => new { c.CategoryId, Display = $"{c.CategoryId} - {c.Name}" }),
+                _context.Categories.Select(c => new { c.CategoryId, Display = $"{c.Name}" }),
                 "CategoryId",
                 "Display"
             );
-            ViewData["TransactionTypeId"] = new SelectList(Enum.GetValues(typeof(TransactionType)).Cast<TransactionType>().Select(t => new { Value = t, Text = t.ToString() }), "Value", "Text");
-            ViewData["DestinationAccountId"] = new SelectList(_context.Accounts, "AccountId", "AccountId");
-            ViewData["SourceAccountId"] = new SelectList(_context.Accounts, "AccountId", "AccountId");
 
             return View();
         }
@@ -71,15 +82,36 @@ namespace FinFriend.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("TransactionId,Amount,Date,Note,Type,SourceAccountId,DestinationAccountId,CategoryId")] Transaction transaction)
         {
+            // Nastavimo kategorijo iz baze glede na izbran CategoryId
+            transaction.Category = await _context.Categories.FindAsync(transaction.CategoryId);
+
             if (ModelState.IsValid)
             {
                 _context.Add(transaction);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["CategoryId"] = new SelectList(_context.Categories, "CategoryId", "CategoryId", transaction.CategoryId);
-            ViewData["DestinationAccountId"] = new SelectList(_context.Accounts, "AccountId", "AccountId", transaction.DestinationAccountId);
-            ViewData["SourceAccountId"] = new SelectList(_context.Accounts, "AccountId", "AccountId", transaction.SourceAccountId);
+            
+            ViewData["TransactionTypeId"] = new SelectList(Enum.GetValues(typeof(TransactionType)).Cast<TransactionType>().Select(t => new { Value = t, Text = t.ToString() }), "Value", "Text");
+            
+            ViewData["SourceAccountId"] = new SelectList(
+                _context.Accounts.Select(a => new { a.AccountId, Display = $"{a.Name}" }),
+                "AccountId",
+                "Display"
+            );
+            
+            ViewData["DestinationAccountId"] = new SelectList(
+                 _context.Accounts.Select(a => new { a.AccountId, Display = $"{a.Name}" }),
+                "AccountId",
+                "Display"
+             );
+
+            ViewData["CategoryId"] = new SelectList(
+                _context.Categories.Select(c => new { c.CategoryId, Display = $"{c.Name}" }),
+                "CategoryId",
+                "Display"
+            );
+
             return View(transaction);
         }
 
@@ -96,9 +128,28 @@ namespace FinFriend.Controllers
             {
                 return NotFound();
             }
-            ViewData["CategoryId"] = new SelectList(_context.Categories, "CategoryId", "CategoryId", transaction.CategoryId);
-            ViewData["DestinationAccountId"] = new SelectList(_context.Accounts, "AccountId", "AccountId", transaction.DestinationAccountId);
-            ViewData["SourceAccountId"] = new SelectList(_context.Accounts, "AccountId", "AccountId", transaction.SourceAccountId);
+
+            ViewData["TransactionTypeId"] = new SelectList(Enum.GetValues(typeof(TransactionType)).Cast<TransactionType>().Select(t => new { Value = t, Text = t.ToString() }), "Value", "Text");
+            
+            ViewData["SourceAccountId"] = new SelectList(
+                _context.Accounts.Select(a => new { a.AccountId, Display = $"{a.Name}" }),
+                "AccountId",
+                "Display"
+            );
+            
+            ViewData["DestinationAccountId"] = new SelectList(
+                 _context.Accounts.Select(a => new { a.AccountId, Display = $"{a.Name}" }),
+                "AccountId",
+                "Display"
+             );
+
+            ViewData["CategoryId"] = new SelectList(
+                _context.Categories.Select(c => new { c.CategoryId, Display = $"{c.Name}" }),
+                "CategoryId",
+                "Display"
+            );
+
+            
             return View(transaction);
         }
 
@@ -134,9 +185,27 @@ namespace FinFriend.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["CategoryId"] = new SelectList(_context.Categories, "CategoryId", "CategoryId", transaction.CategoryId);
-            ViewData["DestinationAccountId"] = new SelectList(_context.Accounts, "AccountId", "AccountId", transaction.DestinationAccountId);
-            ViewData["SourceAccountId"] = new SelectList(_context.Accounts, "AccountId", "AccountId", transaction.SourceAccountId);
+
+            ViewData["TransactionTypeId"] = new SelectList(Enum.GetValues(typeof(TransactionType)).Cast<TransactionType>().Select(t => new { Value = t, Text = t.ToString() }), "Value", "Text");
+            
+            ViewData["SourceAccountId"] = new SelectList(
+                _context.Accounts.Select(a => new { a.AccountId, Display = $"{a.Name}" }),
+                "AccountId",
+                "Display"
+            );
+            
+            ViewData["DestinationAccountId"] = new SelectList(
+                 _context.Accounts.Select(a => new { a.AccountId, Display = $"{a.Name}" }),
+                "AccountId",
+                "Display"
+             );
+
+            ViewData["CategoryId"] = new SelectList(
+                _context.Categories.Select(c => new { c.CategoryId, Display = $"{c.Name}" }),
+                "CategoryId",
+                "Display"
+            );
+            
             return View(transaction);
         }
 

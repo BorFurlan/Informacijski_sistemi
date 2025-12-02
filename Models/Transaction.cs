@@ -30,7 +30,7 @@ public class Transaction
 
     //kategorija
     public int CategoryId { get; set; }
-    public Category Category { get; set; }
+    public Category? Category { get; set; }
 
     //ce zelis se sliko racuna kot prilogo
     // public string? ReceiptImagePath { get; set;  } - ce je shranjena na oblaku

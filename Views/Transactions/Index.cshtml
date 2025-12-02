@@ -52,13 +52,13 @@
                 @Html.DisplayFor(modelItem => item.Type)
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.SourceAccount.AccountId)
+                @Html.DisplayFor(modelItem => item.SourceAccount.Name)
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.DestinationAccount.AccountId)
+                @Html.DisplayFor(modelItem => item.DestinationAccount.Name)
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.Category.CategoryId)
+                @Html.DisplayFor(modelItem => item.Category.Name)
             </td>
             <td>
                 <a asp-action="Edit" asp-route-id="@item.TransactionId">Edit</a> |
