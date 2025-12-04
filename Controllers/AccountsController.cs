@@ -26,8 +26,20 @@ namespace FinFriend.Controllers
         // GET: Accounts
         public async Task<IActionResult> Index()
         {
-            var applicationDbContext = _context.Accounts.Include(a => a.User);
-            return View(await applicationDbContext.ToListAsync());
+            var accounts = await _context.Accounts
+                .Include(a => a.User)
+                .Include(a => a.SourceTransactions)
+                .Include(a => a.DestinationTransactions)
+                .ToListAsync();
+
+            foreach (var account in accounts)
+            {
+                account.CalculateCurrentBalance();
+            }
+
+            await _context.SaveChangesAsync();
+
+            return View(accounts);
         }
 
         // GET: Accounts/Details/5
@@ -77,12 +89,12 @@ namespace FinFriend.Controllers
 
             if (ModelState.IsValid)
             {
-                account.CurrentBalance = account.InitialBalance;
+                account.CurrentBalance = account.InitialBalance; //Decimal.Parse(account.InitialBalance.ToString());
                 _context.Add(account);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["UserId"] = new SelectList(_context.Users, "Id", "Id", account.UserId);
+            ViewData["AccountType"] = new SelectList(Enum.GetValues(typeof(AccountType)).Cast<AccountType>().Select(t => new { Value = t, Text = t.ToString() }), "Value", "Text");
             return View(account);
         }
 

@@ -61,7 +61,7 @@ namespace FinFriend.Controllers
             );
             
             ViewData["DestinationAccountId"] = new SelectList(
-                 _context.Accounts.Select(a => new { a.AccountId, Display = $"{a.Name}" }),
+                _context.Accounts.Select(a => new { a.AccountId, Display = $"{a.Name}" }),
                 "AccountId",
                 "Display"
              );
@@ -87,7 +87,47 @@ namespace FinFriend.Controllers
 
             if (ModelState.IsValid)
             {
-                _context.Add(transaction);
+                // load source/destination accounts (if chosen)
+                Account? sourceAccount = null;
+                Account? destinationAccount = null;
+
+                if (transaction.SourceAccountId.HasValue)
+                {
+                    sourceAccount = await _context.Accounts
+                        .FirstOrDefaultAsync(a => a.AccountId == transaction.SourceAccountId.Value);
+                }
+
+                if (transaction.DestinationAccountId.HasValue)
+                {
+                    destinationAccount = await _context.Accounts
+                        .FirstOrDefaultAsync(a => a.AccountId == transaction.DestinationAccountId.Value);
+                }
+
+                // Ensure FKs / navigation properties are set explicitly
+                if (sourceAccount != null)
+                {
+                    transaction.SourceAccountId = sourceAccount.AccountId;
+                    transaction.SourceAccount = sourceAccount;
+                }
+
+                if (destinationAccount != null)
+                {
+                    transaction.DestinationAccountId = destinationAccount.AccountId;
+                    transaction.DestinationAccount = destinationAccount;
+                }
+
+                _context.Transactions.Add(transaction);
+
+                if (sourceAccount != null)
+                {
+                    sourceAccount.CalculateCurrentBalance();
+                }
+
+                if (destinationAccount != null)
+                {
+                    destinationAccount.CalculateCurrentBalance();
+                }
+
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
@@ -205,7 +245,7 @@ namespace FinFriend.Controllers
                 "CategoryId",
                 "Display"
             );
-            
+
             return View(transaction);
         }
 
