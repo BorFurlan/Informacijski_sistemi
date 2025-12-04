@@ -9,7 +9,7 @@ using FinFriend.Data;
 using FinFriend.Models;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
-
+using FinFriend.Helpers;
 
 namespace FinFriend.Controllers
 {
@@ -84,7 +84,7 @@ namespace FinFriend.Controllers
 
             if (account.User == null)
             {                
-                account.User = await GetCurrentUserAsync();
+                account.User = await UserHelper.GetCurrentUserAsync(HttpContext, _context);
             }
 
             if (ModelState.IsValid)
@@ -131,7 +131,7 @@ namespace FinFriend.Controllers
             {
                 try
                 {
-                    account.User = await GetCurrentUserAsync();
+                    account.User = await UserHelper.GetCurrentUserAsync(HttpContext, _context);
                     _context.Update(account);
                     await _context.SaveChangesAsync();
                 }
@@ -190,18 +190,6 @@ namespace FinFriend.Controllers
         private bool AccountExists(int id)
         {
             return _context.Accounts.Any(e => e.AccountId == id);
-        }
-    
-
-        private async Task<User?> GetCurrentUserAsync()
-        {
-            var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier);
-
-           if (string.IsNullOrEmpty(userId)) return null;
-
-            return await _context.Users
-                .Where(u => u.Id == userId)
-                .FirstOrDefaultAsync();
         }    
     }
 }

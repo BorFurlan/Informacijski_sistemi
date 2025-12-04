@@ -8,6 +8,9 @@ using Microsoft.EntityFrameworkCore;
 using FinFriend.Data;
 using FinFriend.Models;
 using Microsoft.AspNetCore.Authorization;
+using FinFriend.Helpers;
+using Microsoft.AspNetCore.Http;
+
 namespace FinFriend.Controllers
 {
     [Authorize]
@@ -63,11 +66,14 @@ namespace FinFriend.Controllers
         {
             if (ModelState.IsValid)
             {
+                var user = await UserHelper.GetCurrentUserAsync(HttpContext, _context);
+                category.User = user;
                 _context.Add(category);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
             ViewData["UserId"] = new SelectList(_context.Users, "Id", "Id", category.UserId);
+            ViewData["TransactionTypeId"] = new SelectList(Enum.GetValues(typeof(TransactionType)).Cast<TransactionType>().Select(t => new { Value = t, Text = t.ToString() }), "Value", "Text");
             return View(category);
         }
 
@@ -84,7 +90,7 @@ namespace FinFriend.Controllers
             {
                 return NotFound();
             }
-            ViewData["UserId"] = new SelectList(_context.Users, "Id", "Id", category.UserId);
+            ViewData["TransactionTypeId"] = new SelectList(Enum.GetValues(typeof(TransactionType)).Cast<TransactionType>().Select(t => new { Value = t, Text = t.ToString() }), "Value", "Text");
             return View(category);
         }
 
@@ -104,6 +110,7 @@ namespace FinFriend.Controllers
             {
                 try
                 {
+                    category.User = await UserHelper.GetCurrentUserAsync(HttpContext, _context);
                     _context.Update(category);
                     await _context.SaveChangesAsync();
                 }
@@ -120,7 +127,7 @@ namespace FinFriend.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["UserId"] = new SelectList(_context.Users, "Id", "Id", category.UserId);
+            ViewData["TransactionTypeId"] = new SelectList(Enum.GetValues(typeof(TransactionType)).Cast<TransactionType>().Select(t => new { Value = t, Text = t.ToString() }), "Value", "Text");
             return View(category);
         }
 
