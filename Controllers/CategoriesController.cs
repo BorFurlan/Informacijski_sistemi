@@ -10,6 +10,8 @@ using FinFriend.Models;
 using Microsoft.AspNetCore.Authorization;
 using FinFriend.Helpers;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
+using System.Security.Claims;
 
 namespace FinFriend.Controllers
 {
@@ -17,17 +19,32 @@ namespace FinFriend.Controllers
     public class CategoriesController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly UserManager<User> _userManager;
 
-        public CategoriesController(ApplicationDbContext context)
+        public CategoriesController(ApplicationDbContext context, UserManager<User> userManager)
         {
             _context = context;
+            _userManager = userManager;
         }
 
         // GET: Categories
         public async Task<IActionResult> Index()
         {
-            var applicationDbContext = _context.Categories.Include(c => c.User);
-            return View(await applicationDbContext.ToListAsync());
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            IQueryable<Category> query = _context.Categories
+                .Include(c => c.User);
+
+            // Če ni admin → vidi samo svoje kategorije (UserId == njegov ID)
+            if (!User.IsInRole("Admin"))
+            {
+                query = query.Where(c => c.UserId == userId || c.UserId == null);
+            }
+
+            // Admin vidi vse kategorije, tudi tiste s UserId == null
+            var categories = await query.ToListAsync();
+
+            return View(categories);
         }
 
         // GET: Categories/Details/5
@@ -44,6 +61,16 @@ namespace FinFriend.Controllers
             if (category == null)
             {
                 return NotFound();
+            }
+
+            var userId = _userManager.GetUserId(User);
+
+            // access check
+            if (!User.IsInRole("Admin") &&
+               category.UserId != null &&
+               category.UserId != userId)
+            {
+                return Forbid();
             }
 
             return View(category);
@@ -89,6 +116,22 @@ namespace FinFriend.Controllers
             if (category == null)
             {
                 return NotFound();
+            }
+
+            var userId = _userManager.GetUserId(User);
+
+            // access check
+            if (!User.IsInRole("Admin") &&
+               category.UserId != null &&
+               category.UserId != userId)
+            {
+                return Forbid();
+            }
+            //da uporabnik ne more urejati globalne kategorije
+            if (!User.IsInRole("Admin") && category.UserId == null)
+            {
+                TempData["Error"] = "Nimate dovoljenja za urejanje te kategorije.";
+                return RedirectToAction("Index");
             }
             ViewData["TransactionTypeId"] = new SelectList(Enum.GetValues(typeof(TransactionType)).Cast<TransactionType>().Select(t => new { Value = t, Text = t.ToString() }), "Value", "Text");
             return View(category);
@@ -147,6 +190,22 @@ namespace FinFriend.Controllers
                 return NotFound();
             }
 
+            var userId = _userManager.GetUserId(User);
+
+            // access check
+            if (!User.IsInRole("Admin") &&
+               category.UserId != null &&
+               category.UserId != userId)
+            {
+                return Forbid();
+            }
+
+            //da uporabnik ne more zbrisati globalne kategorije
+            if (!User.IsInRole("Admin") && category.UserId == null)
+            {
+                TempData["Error"] = "Nimate dovoljenja za brisanje te kategorije.";
+                return RedirectToAction("Index");
+            }
             return View(category);
         }
 
