@@ -10,6 +10,7 @@ using FinFriend.Models;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using FinFriend.Helpers;
+using Microsoft.AspNetCore.Identity;
 
 namespace FinFriend.Controllers
 {
@@ -17,25 +18,33 @@ namespace FinFriend.Controllers
     public class AccountsController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly UserManager<User> _userManager;
 
-        public AccountsController(ApplicationDbContext context)
+        public AccountsController(
+        ApplicationDbContext context,
+        UserManager<User> userManager)
         {
             _context = context;
+            _userManager = userManager;
         }
 
         // GET: Accounts
         public async Task<IActionResult> Index()
         {
-            var accounts = await _context.Accounts
+            var userId = _userManager.GetUserId(User);
+
+            IQueryable<Account> query = _context.Accounts
                 .Include(a => a.User)
                 .Include(a => a.SourceTransactions)
-                .Include(a => a.DestinationTransactions)
-                .ToListAsync();
+                .Include(a => a.DestinationTransactions);
 
-            foreach (var account in accounts)
+            // Če ni admin → vidi samo svoje račune
+            if (!User.IsInRole("Admin"))
             {
-                account.CalculateCurrentBalance();
+                query = query.Where(a => a.UserId == userId);
             }
+
+            var accounts = await query.ToListAsync();
 
             await _context.SaveChangesAsync();
 
@@ -56,6 +65,13 @@ namespace FinFriend.Controllers
             if (account == null)
             {
                 return NotFound();
+            }
+
+            var userId = _userManager.GetUserId(User);
+
+            if (!User.IsInRole("Admin") && account.UserId != userId)
+            {
+                return Forbid(); 
             }
 
             ViewData["UserName"] = new SelectList(_context.Users, "UserName", "UserName", account.User.UserName);
@@ -111,6 +127,14 @@ namespace FinFriend.Controllers
             {
                 return NotFound();
             }
+
+            var userId = _userManager.GetUserId(User);
+
+            if (!User.IsInRole("Admin") && account.UserId != userId)
+            {
+                return Forbid();    
+            }
+
             ViewData["AccountType"] = new SelectList(Enum.GetValues(typeof(AccountType)).Cast<AccountType>().Select(t => new { Value = t, Text = t.ToString() }), "Value", "Text");
             return View(account);
         }
@@ -169,6 +193,12 @@ namespace FinFriend.Controllers
                 return NotFound();
             }
 
+            var userId = _userManager.GetUserId(User);
+
+            if (!User.IsInRole("Admin") && account.UserId != userId)
+            {
+                return Forbid(); 
+            }
             return View(account);
         }
 
