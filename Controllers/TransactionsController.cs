@@ -83,27 +83,41 @@ namespace FinFriend.Controllers
         }
 
         // GET: Transactions/Create
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
-            ViewData["TransactionTypeId"] = new SelectList(Enum.GetValues(typeof(TransactionType)).Cast<TransactionType>().Select(t => new { Value = t, Text = t.ToString() }), "Value", "Text");
-            
-            ViewData["SourceAccountId"] = new SelectList(
-                _context.Accounts.Select(a => new { a.AccountId, Display = $"{a.Name}" }),
-                "AccountId",
-                "Display"
-            );
-            
-            ViewData["DestinationAccountId"] = new SelectList(
-                _context.Accounts.Select(a => new { a.AccountId, Display = $"{a.Name}" }),
-                "AccountId",
-                "Display"
-             );
+            var userId = _userManager.GetUserId(User);
 
-            ViewData["CategoryId"] = new SelectList(
-                _context.Categories.Select(c => new { c.CategoryId, Display = $"{c.Name}" }),
-                "CategoryId",
-                "Display"
-            );
+            // Admin vidi vse račune
+            IQueryable<Account> accountsQuery = _context.Accounts;
+
+            if (!User.IsInRole("Admin"))
+            {
+                accountsQuery = accountsQuery.Where(a => a.UserId == userId);
+            }
+
+            var accounts = await accountsQuery
+                .Select(a => new { a.AccountId, Display = a.Name })
+                .ToListAsync();
+
+
+            // Admin vidi vse kategorije; navadni samo svoje + shared (UserId == null)
+            IQueryable<Category> categoriesQuery = _context.Categories;
+
+            if (!User.IsInRole("Admin"))
+            {
+                categoriesQuery = categoriesQuery.Where(c =>
+                    c.UserId == userId || c.UserId == null);
+            }
+
+            var categories = await categoriesQuery
+                .Select(c => new { c.CategoryId, Display = c.Name })
+                .ToListAsync();
+
+            ViewData["TransactionTypeId"] = new SelectList(Enum.GetValues(typeof(TransactionType)).Cast<TransactionType>().Select(t => new { Value = t, Text = t.ToString() }), "Value", "Text");
+
+            ViewData["SourceAccountId"] = new SelectList(accounts, "AccountId", "Display");
+            ViewData["DestinationAccountId"] = new SelectList(accounts, "AccountId", "Display");
+            ViewData["CategoryId"] = new SelectList(categories, "CategoryId", "Display");
 
             return View();
         }
@@ -201,7 +215,7 @@ namespace FinFriend.Controllers
                 .Include(t => t.DestinationAccount)
                 .Include(t => t.Category)
                 .FirstOrDefaultAsync(t => t.TransactionId == id);
-                
+
             if (transaction == null)
             {
                 return NotFound();
@@ -209,27 +223,40 @@ namespace FinFriend.Controllers
             if (!await UserCanAccessTransaction(transaction))
                 return Forbid();
 
+            var userId = _userManager.GetUserId(User);
+
+            // Admin vidi vse račune
+            IQueryable<Account> accountsQuery = _context.Accounts;
+
+            if (!User.IsInRole("Admin"))
+            {
+                accountsQuery = accountsQuery.Where(a => a.UserId == userId);
+            }
+
+            var accounts = await accountsQuery
+                .Select(a => new { a.AccountId, Display = a.Name })
+                .ToListAsync();
+
+
+            // Admin vidi vse kategorije; navadni samo svoje + shared (UserId == null)
+            IQueryable<Category> categoriesQuery = _context.Categories;
+
+            if (!User.IsInRole("Admin"))
+            {
+                categoriesQuery = categoriesQuery.Where(c =>
+                    c.UserId == userId || c.UserId == null);
+            }
+
+            var categories = await categoriesQuery
+                .Select(c => new { c.CategoryId, Display = c.Name })
+                .ToListAsync();
+
             ViewData["TransactionTypeId"] = new SelectList(Enum.GetValues(typeof(TransactionType)).Cast<TransactionType>().Select(t => new { Value = t, Text = t.ToString() }), "Value", "Text");
-            
-            ViewData["SourceAccountId"] = new SelectList(
-                _context.Accounts.Select(a => new { a.AccountId, Display = $"{a.Name}" }),
-                "AccountId",
-                "Display"
-            );
-            
-            ViewData["DestinationAccountId"] = new SelectList(
-                 _context.Accounts.Select(a => new { a.AccountId, Display = $"{a.Name}" }),
-                "AccountId",
-                "Display"
-             );
 
-            ViewData["CategoryId"] = new SelectList(
-                _context.Categories.Select(c => new { c.CategoryId, Display = $"{c.Name}" }),
-                "CategoryId",
-                "Display"
-            );
+            ViewData["SourceAccountId"] = new SelectList(accounts, "AccountId", "Display", transaction.SourceAccountId);
+            ViewData["DestinationAccountId"] = new SelectList(accounts, "AccountId", "Display", transaction.DestinationAccountId);
+            ViewData["CategoryId"] = new SelectList(categories, "CategoryId", "Display", transaction.CategoryId);
 
-            
             return View(transaction);
         }
 
