@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using FinFriend.Data;
 using FinFriend.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 
 namespace FinFriend.Controllers
 {
@@ -15,17 +16,46 @@ namespace FinFriend.Controllers
     public class TransactionsController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly UserManager<User> _userManager;
 
-        public TransactionsController(ApplicationDbContext context)
+        public TransactionsController(ApplicationDbContext context, UserManager<User> userManager)
         {
             _context = context;
+            _userManager = userManager;
         }
 
+        private async Task<bool> UserCanAccessTransaction(Transaction transaction)
+        {
+            if (User.IsInRole("Admin"))
+                return true;
+
+            var userId = _userManager.GetUserId(User);
+
+            return
+                (transaction.SourceAccount?.UserId == userId) ||
+                (transaction.DestinationAccount?.UserId == userId);
+        }
         // GET: Transactions
         public async Task<IActionResult> Index()
         {
-            var applicationDbContext = _context.Transactions.Include(t => t.Category).Include(t => t.DestinationAccount).Include(t => t.SourceAccount);
-            return View(await applicationDbContext.ToListAsync());
+            var userId = _userManager.GetUserId(User);
+
+            IQueryable<Transaction> query = _context.Transactions
+                .Include(t => t.SourceAccount)
+                .Include(t => t.DestinationAccount)
+                .Include(t => t.Category);
+
+            // navadni uporabnik: vidi samo svoje
+            if (!User.IsInRole("Admin"))
+            {
+                query = query.Where(t =>
+                    (t.SourceAccount != null && t.SourceAccount.UserId == userId) ||
+                    (t.DestinationAccount != null && t.DestinationAccount.UserId == userId)
+                );
+            }
+
+            var transactions = await query.ToListAsync();
+            return View(transactions);
         }
 
         // GET: Transactions/Details/5
@@ -45,6 +75,9 @@ namespace FinFriend.Controllers
             {
                 return NotFound();
             }
+
+            if (!await UserCanAccessTransaction(transaction))
+                return Forbid();
 
             return View(transaction);
         }
@@ -163,11 +196,18 @@ namespace FinFriend.Controllers
                 return NotFound();
             }
 
-            var transaction = await _context.Transactions.FindAsync(id);
+            var transaction = await _context.Transactions
+                .Include(t => t.SourceAccount)
+                .Include(t => t.DestinationAccount)
+                .Include(t => t.Category)
+                .FirstOrDefaultAsync(t => t.TransactionId == id);
+                
             if (transaction == null)
             {
                 return NotFound();
             }
+            if (!await UserCanAccessTransaction(transaction))
+                return Forbid();
 
             ViewData["TransactionTypeId"] = new SelectList(Enum.GetValues(typeof(TransactionType)).Cast<TransactionType>().Select(t => new { Value = t, Text = t.ToString() }), "Value", "Text");
             
@@ -266,6 +306,8 @@ namespace FinFriend.Controllers
             {
                 return NotFound();
             }
+            if (!await UserCanAccessTransaction(transaction))
+                return Forbid();
 
             return View(transaction);
         }
