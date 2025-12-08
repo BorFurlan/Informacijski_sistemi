@@ -247,17 +247,15 @@ namespace FinFriend.Controllers
             
             ViewData["TransactionTypeId"] = new SelectList(Enum.GetValues(typeof(TransactionType)).Cast<TransactionType>().Select(t => new { Value = t, Text = t.ToString() }), "Value", "Text");
             
-            ViewData["SourceAccountId"] = new SelectList(
-                _context.Accounts.Select(a => new { a.AccountId, Display = $"{a.Name}" }),
-                "AccountId",
-                "Display"
-            );
-            
-            ViewData["DestinationAccountId"] = new SelectList(
-                 _context.Accounts.Select(a => new { a.AccountId, Display = $"{a.Name}" }),
-                "AccountId",
-                "Display"
-             );
+            // Repopulate accounts, filtered for non-admin users (so they don't see others' accounts)
+            IQueryable<Account> accountsQuery = _context.Accounts;
+            if (!User.IsInRole("Admin"))
+            {
+                accountsQuery = accountsQuery.Where(a => a.UserId == userId);
+            }
+            var accountsList = await accountsQuery.Select(a => new { a.AccountId, Display = a.Name }).ToListAsync();
+            ViewData["SourceAccountId"] = new SelectList(accountsList, "AccountId", "Display", transaction.SourceAccountId);
+            ViewData["DestinationAccountId"] = new SelectList(accountsList, "AccountId", "Display", transaction.DestinationAccountId);
 
             // ensure categories are available for the view (include Type for client filtering)
             // reuse the earlier `userId` declared above in this method
@@ -268,9 +266,9 @@ namespace FinFriend.Controllers
             }
             var categories = await categoriesQuery.Select(c => new { c.CategoryId, c.Name, c.Type }).ToListAsync();
             ViewBag.Categories = categories;
-            ViewData["CategoryId"] = new SelectList(categories.Select(c => new { c.CategoryId, Display = c.Name }), "CategoryId", "Display");
+              ViewData["CategoryId"] = new SelectList(categories.Select(c => new { c.CategoryId, Display = c.Name }), "CategoryId", "Display");
 
-            return View(transaction);
+              return View(transaction);
         }
 
         // GET: Transactions/Edit/5
