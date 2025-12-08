@@ -46,7 +46,20 @@
             </div>
             <div class="form-group">
                 <label asp-for="CategoryId" class="control-label"></label>
-                <select asp-for="CategoryId" class ="form-control" asp-items="ViewBag.CategoryId"></select>
+                <select asp-for="CategoryId" id="CategoryId" class ="form-control">
+                    <option value="">(none)</option>
+                    @{
+                        var cats = ViewBag.Categories as IEnumerable<dynamic>;
+                        if (cats != null)
+                        {
+                            foreach (var c in cats)
+                            {
+                                <option value="@c.CategoryId" data-type="@c.Type">@c.Name</option>
+                            }
+                        }
+                    }
+                </select>
+                <span asp-validation-for="CategoryId" class="text-danger"></span>
             </div>
             <div class="form-group">
                 <input type="submit" value="Create" class="btn btn-primary" />
@@ -91,6 +104,32 @@
             typeEl.addEventListener('change', updateAccountVisibility);
         }
         updateAccountVisibility();
+        // also filter categories based on current type
+        function updateCategoryVisibility() {
+            const typeEl = document.getElementById('Type');
+            const catSelect = document.getElementById('CategoryId');
+            if (!typeEl || !catSelect) return;
+            const type = typeEl.value;
+            for (let i = 0; i < catSelect.options.length; i++) {
+                const opt = catSelect.options[i];
+                const optType = opt.getAttribute('data-type');
+                if (!optType) { opt.style.display = ''; opt.disabled = false; continue; }
+                if (type === 'Transfer') {
+                    // show only Transfer categories or those marked Transfer
+                    if (optType === 'Transfer') { opt.style.display = ''; opt.disabled = false; } else { opt.style.display = 'none'; opt.disabled = true; }
+                } else {
+                    if (optType === type) { opt.style.display = ''; opt.disabled = false; }
+                    else { opt.style.display = 'none'; opt.disabled = true; }
+                }
+            }
+            // if the currently selected category was hidden, clear selection
+            if (catSelect.selectedIndex >= 0) {
+                const sel = catSelect.options[catSelect.selectedIndex];
+                if (sel && sel.style.display === 'none') catSelect.value = '';
+            }
+        }
+        if (typeEl) typeEl.addEventListener('change', updateCategoryVisibility);
+        updateCategoryVisibility();
     });
 </script>
 

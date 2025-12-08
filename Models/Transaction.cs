@@ -1,5 +1,6 @@
 namespace FinFriend.Models;
 
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 public enum TransactionType
@@ -29,6 +30,7 @@ public class Transaction
     
 
     //kategorija
+    [Range(1, int.MaxValue, ErrorMessage = "Category is required")]
     public int CategoryId { get; set; }
     public Category? Category { get; set; }
 

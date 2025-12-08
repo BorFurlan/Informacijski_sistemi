@@ -110,14 +110,16 @@ namespace FinFriend.Controllers
             }
 
             var categories = await categoriesQuery
-                .Select(c => new { c.CategoryId, Display = c.Name })
+                .Select(c => new { c.CategoryId, c.Name, c.Type })
                 .ToListAsync();
 
             ViewData["TransactionTypeId"] = new SelectList(Enum.GetValues(typeof(TransactionType)).Cast<TransactionType>().Select(t => new { Value = t, Text = t.ToString() }), "Value", "Text");
 
             ViewData["SourceAccountId"] = new SelectList(accounts, "AccountId", "Display");
             ViewData["DestinationAccountId"] = new SelectList(accounts, "AccountId", "Display");
-            ViewData["CategoryId"] = new SelectList(categories, "CategoryId", "Display");
+            // pass categories with type info for client-side filtering
+            ViewBag.Categories = categories;
+            ViewData["CategoryId"] = new SelectList(categories.Select(c => new { c.CategoryId, Display = c.Name }), "CategoryId", "Display");
 
             return View();
         }
@@ -132,6 +134,33 @@ namespace FinFriend.Controllers
             // Nastavimo kategorijo iz baze glede na izbran CategoryId
             transaction.Category = await _context.Categories.FindAsync(transaction.CategoryId);
             var userId = _userManager.GetUserId(User);
+
+            // Server-side: ensure required accounts are provided based on transaction type
+            if (transaction.Type == TransactionType.Income)
+            {
+                if (!transaction.DestinationAccountId.HasValue)
+                {
+                    ModelState.AddModelError("DestinationAccountId", "Destination account is required for Income transactions.");
+                }
+            }
+            else if (transaction.Type == TransactionType.Expense)
+            {
+                if (!transaction.SourceAccountId.HasValue)
+                {
+                    ModelState.AddModelError("SourceAccountId", "Source account is required for Expense transactions.");
+                }
+            }
+            else if (transaction.Type == TransactionType.Transfer)
+            {
+                if (!transaction.SourceAccountId.HasValue)
+                {
+                    ModelState.AddModelError("SourceAccountId", "Source account is required for Transfer transactions.");
+                }
+                if (!transaction.DestinationAccountId.HasValue)
+                {
+                    ModelState.AddModelError("DestinationAccountId", "Destination account is required for Transfer transactions.");
+                }
+            }
             if (ModelState.IsValid)
             {
                 // load source/destination accounts (if chosen)
@@ -230,11 +259,16 @@ namespace FinFriend.Controllers
                 "Display"
              );
 
-            ViewData["CategoryId"] = new SelectList(
-                _context.Categories.Select(c => new { c.CategoryId, Display = $"{c.Name}" }),
-                "CategoryId",
-                "Display"
-            );
+            // ensure categories are available for the view (include Type for client filtering)
+            // reuse the earlier `userId` declared above in this method
+            IQueryable<Category> categoriesQuery = _context.Categories;
+            if (!User.IsInRole("Admin"))
+            {
+                categoriesQuery = categoriesQuery.Where(c => c.UserId == userId || c.UserId == null);
+            }
+            var categories = await categoriesQuery.Select(c => new { c.CategoryId, c.Name, c.Type }).ToListAsync();
+            ViewBag.Categories = categories;
+            ViewData["CategoryId"] = new SelectList(categories.Select(c => new { c.CategoryId, Display = c.Name }), "CategoryId", "Display");
 
             return View(transaction);
         }
@@ -307,6 +341,33 @@ namespace FinFriend.Controllers
             if (id != transaction.TransactionId)
             {
                 return NotFound();
+            }
+
+            // Server-side: ensure required accounts are provided based on transaction type
+            if (transaction.Type == TransactionType.Income)
+            {
+                if (!transaction.DestinationAccountId.HasValue)
+                {
+                    ModelState.AddModelError("DestinationAccountId", "Destination account is required for Income transactions.");
+                }
+            }
+            else if (transaction.Type == TransactionType.Expense)
+            {
+                if (!transaction.SourceAccountId.HasValue)
+                {
+                    ModelState.AddModelError("SourceAccountId", "Source account is required for Expense transactions.");
+                }
+            }
+            else if (transaction.Type == TransactionType.Transfer)
+            {
+                if (!transaction.SourceAccountId.HasValue)
+                {
+                    ModelState.AddModelError("SourceAccountId", "Source account is required for Transfer transactions.");
+                }
+                if (!transaction.DestinationAccountId.HasValue)
+                {
+                    ModelState.AddModelError("DestinationAccountId", "Destination account is required for Transfer transactions.");
+                }
             }
 
             if (ModelState.IsValid)
