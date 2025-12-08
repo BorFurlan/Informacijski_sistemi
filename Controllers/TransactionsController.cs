@@ -180,6 +180,17 @@ namespace FinFriend.Controllers
                     transaction.DestinationAccount = destinationAccount;
                 }
 
+                // If an account id wasn't provided, ensure the navigation property is null
+                if (!transaction.SourceAccountId.HasValue)
+                {
+                    transaction.SourceAccount = null;
+                }
+
+                if (!transaction.DestinationAccountId.HasValue)
+                {
+                    transaction.DestinationAccount = null;
+                }
+
                 // add the transaction
                 _context.Transactions.Add(transaction);
 
