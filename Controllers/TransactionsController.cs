@@ -131,7 +131,7 @@ namespace FinFriend.Controllers
         {
             // Nastavimo kategorijo iz baze glede na izbran CategoryId
             transaction.Category = await _context.Categories.FindAsync(transaction.CategoryId);
-
+            var userId = _userManager.GetUserId(User);
             if (ModelState.IsValid)
             {
                 // load source/destination accounts (if chosen)
@@ -150,6 +150,23 @@ namespace FinFriend.Controllers
                         .FirstOrDefaultAsync(a => a.AccountId == transaction.DestinationAccountId.Value);
                 }
 
+                if (transaction.Type == TransactionType.Income)
+                {
+                    // Pri dohodku ni source account
+                    transaction.SourceAccountId = null;
+                    transaction.SourceAccount = null;
+
+                }
+                else if (transaction.Type == TransactionType.Expense)
+                {
+                    // Pri strošku ni destination account
+                    transaction.DestinationAccountId = null;
+                    transaction.DestinationAccount = null;
+
+                
+                }
+                
+
                 // Ensure FKs / navigation properties are set explicitly
                 if (sourceAccount != null)
                 {
@@ -163,16 +180,25 @@ namespace FinFriend.Controllers
                     transaction.DestinationAccount = destinationAccount;
                 }
 
+                // add the transaction
                 _context.Transactions.Add(transaction);
 
+                // Update account CurrentBalance directly so changes persist correctly
+                // and reflect the newly added transaction immediately.
+                // For Income: increase destination account (source is null)
+                // For Expense: decrease source account (destination is null)
+                // For Transfer: decrease source and increase destination
                 if (sourceAccount != null)
                 {
-                    sourceAccount.CalculateCurrentBalance();
+                    // sourceAccount is tracked; apply delta and mark modified
+                    sourceAccount.CurrentBalance -= transaction.Amount;
+                    _context.Accounts.Update(sourceAccount);
                 }
 
                 if (destinationAccount != null)
                 {
-                    destinationAccount.CalculateCurrentBalance();
+                    destinationAccount.CurrentBalance += transaction.Amount;
+                    _context.Accounts.Update(destinationAccount);
                 }
 
                 await _context.SaveChangesAsync();
@@ -274,10 +300,109 @@ namespace FinFriend.Controllers
 
             if (ModelState.IsValid)
             {
+                // Use a DB transaction to ensure undo+redo is atomic
+                using var dbTx = await _context.Database.BeginTransactionAsync();
                 try
                 {
+                    // load original transaction (no tracking so we can compare)
+                    var original = await _context.Transactions
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(t => t.TransactionId == transaction.TransactionId);
+
+                    if (original != null)
+                    {
+                        // Undo original effect on accounts
+                        if (original.Type == TransactionType.Transfer)
+                        {
+                            if (original.SourceAccountId.HasValue)
+                            {
+                                var origSrc = await _context.Accounts.FindAsync(original.SourceAccountId.Value);
+                                if (origSrc != null)
+                                {
+                                    origSrc.CurrentBalance += original.Amount;
+                                    _context.Accounts.Update(origSrc);
+                                }
+                            }
+                            if (original.DestinationAccountId.HasValue)
+                            {
+                                var origDst = await _context.Accounts.FindAsync(original.DestinationAccountId.Value);
+                                if (origDst != null)
+                                {
+                                    origDst.CurrentBalance -= original.Amount;
+                                    _context.Accounts.Update(origDst);
+                                }
+                            }
+                        }
+                        else if (original.Type == TransactionType.Income)
+                        {
+                            if (original.DestinationAccountId.HasValue)
+                            {
+                                var origDst = await _context.Accounts.FindAsync(original.DestinationAccountId.Value);
+                                if (origDst != null)
+                                {
+                                    origDst.CurrentBalance -= original.Amount;
+                                    _context.Accounts.Update(origDst);
+                                }
+                            }
+                        }
+                        else if (original.Type == TransactionType.Expense)
+                        {
+                            if (original.SourceAccountId.HasValue)
+                            {
+                                var origSrc = await _context.Accounts.FindAsync(original.SourceAccountId.Value);
+                                if (origSrc != null)
+                                {
+                                    origSrc.CurrentBalance += original.Amount;
+                                    _context.Accounts.Update(origSrc);
+                                }
+                            }
+                        }
+                    }
+
+                    // Now apply the new transaction effect (similar to Create)
+                    // Ensure we have up-to-date tracked accounts
+                    Account? newSource = null;
+                    Account? newDestination = null;
+
+                    if (transaction.SourceAccountId.HasValue)
+                    {
+                        newSource = await _context.Accounts.FindAsync(transaction.SourceAccountId.Value);
+                    }
+                    if (transaction.DestinationAccountId.HasValue)
+                    {
+                        newDestination = await _context.Accounts.FindAsync(transaction.DestinationAccountId.Value);
+                    }
+
+                    // Adjust for transaction type rules (Income: no source; Expense: no destination)
+                    if (transaction.Type == TransactionType.Income)
+                    {
+                        transaction.SourceAccountId = null;
+                        transaction.SourceAccount = null;
+                    }
+                    else if (transaction.Type == TransactionType.Expense)
+                    {
+                        transaction.DestinationAccountId = null;
+                        transaction.DestinationAccount = null;
+                    }
+
+                    if (newSource != null)
+                    {
+                        newSource.CurrentBalance -= transaction.Amount;
+                        _context.Accounts.Update(newSource);
+                    }
+
+                    if (newDestination != null)
+                    {
+                        newDestination.CurrentBalance += transaction.Amount;
+                        _context.Accounts.Update(newDestination);
+                    }
+
+                    // Update the transaction record itself
                     _context.Update(transaction);
                     await _context.SaveChangesAsync();
+                    await dbTx.CommitAsync();
+
+                    return RedirectToAction(nameof(Index));
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -290,7 +415,6 @@ namespace FinFriend.Controllers
                         throw;
                     }
                 }
-                return RedirectToAction(nameof(Index));
             }
 
             ViewData["TransactionTypeId"] = new SelectList(Enum.GetValues(typeof(TransactionType)).Cast<TransactionType>().Select(t => new { Value = t, Text = t.ToString() }), "Value", "Text");
@@ -347,10 +471,57 @@ namespace FinFriend.Controllers
             var transaction = await _context.Transactions.FindAsync(id);
             if (transaction != null)
             {
+                // Undo transaction effect on accounts before deleting
+                if (transaction.Type == TransactionType.Transfer)
+                {
+                    if (transaction.SourceAccountId.HasValue)
+                    {
+                        var src = await _context.Accounts.FindAsync(transaction.SourceAccountId.Value);
+                        if (src != null)
+                        {
+                            src.CurrentBalance += transaction.Amount;
+                            _context.Accounts.Update(src);
+                        }
+                    }
+                    if (transaction.DestinationAccountId.HasValue)
+                    {
+                        var dst = await _context.Accounts.FindAsync(transaction.DestinationAccountId.Value);
+                        if (dst != null)
+                        {
+                            dst.CurrentBalance -= transaction.Amount;
+                            _context.Accounts.Update(dst);
+                        }
+                    }
+                }
+                else if (transaction.Type == TransactionType.Income)
+                {
+                    if (transaction.DestinationAccountId.HasValue)
+                    {
+                        var dst = await _context.Accounts.FindAsync(transaction.DestinationAccountId.Value);
+                        if (dst != null)
+                        {
+                            dst.CurrentBalance -= transaction.Amount;
+                            _context.Accounts.Update(dst);
+                        }
+                    }
+                }
+                else if (transaction.Type == TransactionType.Expense)
+                {
+                    if (transaction.SourceAccountId.HasValue)
+                    {
+                        var src = await _context.Accounts.FindAsync(transaction.SourceAccountId.Value);
+                        if (src != null)
+                        {
+                            src.CurrentBalance += transaction.Amount;
+                            _context.Accounts.Update(src);
+                        }
+                    }
+                }
+
                 _context.Transactions.Remove(transaction);
+                await _context.SaveChangesAsync();
             }
 
-            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
