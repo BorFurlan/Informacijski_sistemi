@@ -2,13 +2,36 @@ using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using FinFriend.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 namespace FinFriend.Controllers;
+using FinFriend.Data;
+using Microsoft.EntityFrameworkCore;
+
 
 [Authorize]
 public class HomeController : Controller
 {
-    public IActionResult Index()
+    private readonly ApplicationDbContext _context;
+    private readonly UserManager<User> _userManager;
+
+    public HomeController(ApplicationDbContext context, UserManager<User> userManager)
     {
+        _context = context;
+        _userManager = userManager;
+    }
+
+    
+    public async Task<IActionResult> Index()
+    {
+        // var userId = _userManager.GetUserId(User);
+
+        // // Prikaže samo račune prijavljenega uporabnika, ki so označeni kot "included"
+        // var totalBalance = await _context.Accounts
+        //     .Where(a => a.UserId == userId && a.IsIncludedInTotal == true)
+        //     .SumAsync(a => a.CurrentBalance);
+
+        // ViewBag.TotalBalance = totalBalance;
+
         return View();
     }
 
