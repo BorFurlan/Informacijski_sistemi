@@ -9,6 +9,7 @@ using FinFriend.Data;
 using FinFriend.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using FinFriend.ViewModels;
 
 namespace FinFriend.Controllers
 {
@@ -36,10 +37,10 @@ namespace FinFriend.Controllers
                 (transaction.DestinationAccount?.UserId == userId);
         }
         // GET: Transactions
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(TransactionFilterViewModel filter)
         {
             var userId = _userManager.GetUserId(User);
-
+            //osnovna poizvedba
             IQueryable<Transaction> query = _context.Transactions
                 .Include(t => t.SourceAccount)
                 .Include(t => t.DestinationAccount)
@@ -54,8 +55,67 @@ namespace FinFriend.Controllers
                 );
             }
 
+            //filtri
+            //filter racuna
+            if (filter.AccountId.HasValue)
+            {
+                query = query.Where(t =>
+                    t.SourceAccountId == filter.AccountId.Value ||
+                    t.DestinationAccountId == filter.AccountId.Value
+                );
+            }
+            //filter tipa transakcije
+            if (filter.Type.HasValue)
+            {
+                query = query.Where(t => t.Type == filter.Type.Value);
+            }
+            //filter kategorije
+            if (filter.CategoryId.HasValue)
+            {
+                query = query.Where(t => t.CategoryId == filter.CategoryId.Value);
+            }
+
+            //fitler zneska
+            if (filter.MinAmount.HasValue)
+            {
+                query = query.Where(t => t.Amount >= filter.MinAmount.Value);
+            }
+
+            if (filter.MaxAmount.HasValue)
+            {
+                query = query.Where(t => t.Amount <= filter.MaxAmount.Value);
+            }
+
+            //filter datuma
+            if (filter.StartDate.HasValue)
+            {
+                query = query.Where(t => t.Date >= filter.StartDate.Value);
+            }
+
+            if (filter.EndDate.HasValue)
+            {
+                query = query.Where(t => t.Date <= filter.EndDate.Value);
+            }
+
+            // priprava seznama za dropdowne
+            filter.Accounts = await _context.Accounts
+                .Where(a => User.IsInRole("Admin") || a.UserId == userId)
+                .Select(a => new SelectListItem { Value = a.AccountId.ToString(), Text = a.Name })
+                .ToListAsync();
+
+            filter.Categories = await _context.Categories
+                .Where(c => User.IsInRole("Admin") || c.UserId == userId || c.UserId == null)
+                .Select(c => new SelectListItem { Value = c.CategoryId.ToString(), Text = c.Name })
+                .ToListAsync();
+
+            filter.Types = Enum.GetValues(typeof(TransactionType))
+                .Cast<TransactionType>()
+                .Select(t => new SelectListItem { Value = ((int)t).ToString(), Text = t.ToString() })
+                .ToList();
+                
             var transactions = await query.ToListAsync();
-            return View(transactions);
+            ViewBag.Transactions = transactions;
+            return View(filter);
         }
 
         // GET: Transactions/Details/5

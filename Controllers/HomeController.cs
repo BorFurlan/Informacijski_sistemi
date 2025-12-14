@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Identity;
 namespace FinFriend.Controllers;
 using FinFriend.Data;
 using Microsoft.EntityFrameworkCore;
-
+using FinFriend.ViewModels;
 
 [Authorize]
 public class HomeController : Controller

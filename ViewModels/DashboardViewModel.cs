@@ -1,5 +1,5 @@
 using FinFriend.Models;
-
+namespace FinFriend.ViewModels;
 public class DashboardViewModel
 {
     public decimal TotalBalance { get; set; }
