@@ -46,7 +46,7 @@ namespace FinFriend.Controllers
             };
             // Prikaže samo račune prijavljenega uporabnika, ki so označeni kot "included"
 
-            ViewData["Accounts"] = new SelectList(accounts, "AccountId", "Name");
+            ViewData["Accounts"] = new SelectList(accounts, "AccountId", "Name", accounts.FirstOrDefault()?.AccountId);
 
             return View(vm);
         }
