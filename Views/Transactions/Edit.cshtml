@@ -33,12 +33,12 @@
                 <select asp-for="Type" class="form-control" asp-items="ViewBag.TransactionTypeId" ></select>
                 <span asp-validation-for="Type" class="text-danger"></span>
             </div>
-            <div class="form-group">
+            <div id="source-group" class="form-group">
                 <label asp-for="SourceAccountId" class="control-label"></label>
                 <select asp-for="SourceAccountId" class="form-control" asp-items="ViewBag.SourceAccountId"></select>
                 <span asp-validation-for="SourceAccountId" class="text-danger"></span>
             </div>
-            <div class="form-group">
+            <div id="destination-group" class="form-group">
                 <label asp-for="DestinationAccountId" class="control-label"></label>
                 <select asp-for="DestinationAccountId" class="form-control" asp-items="ViewBag.DestinationAccountId"></select>
                 <span asp-validation-for="DestinationAccountId" class="text-danger"></span>
@@ -54,6 +54,70 @@
         </form>
     </div>
 </div>
+<script>
+    // show/hide account selects depending on selected Transaction Type
+    function updateAccountVisibility() {
+        const typeEl = document.getElementById('Type');
+        if (!typeEl) return;
+        const type = typeEl.value;
+        const srcGroup = document.getElementById('source-group');
+        const dstGroup = document.getElementById('destination-group');
+        const srcSelect = document.getElementById('SourceAccountId');
+        const dstSelect = document.getElementById('DestinationAccountId');
+
+        if (type === 'Income') {
+            if (srcGroup) srcGroup.style.display = 'none';
+            if (srcSelect) { srcSelect.disabled = true; srcSelect.value = ''; }
+            if (dstGroup) dstGroup.style.display = '';
+            if (dstSelect) dstSelect.disabled = false;
+        } else if (type === 'Expense') {
+            if (dstGroup) dstGroup.style.display = 'none';
+            if (dstSelect) { dstSelect.disabled = true; dstSelect.value = ''; }
+            if (srcGroup) srcGroup.style.display = '';
+            if (srcSelect) srcSelect.disabled = false;
+        } else {
+            // Transfer or other -> show both
+            if (srcGroup) srcGroup.style.display = '';
+            if (dstGroup) dstGroup.style.display = '';
+            if (srcSelect) srcSelect.disabled = false;
+            if (dstSelect) dstSelect.disabled = false;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const typeEl = document.getElementById('Type');
+        if (typeEl) {
+            typeEl.addEventListener('change', updateAccountVisibility);
+        }
+        updateAccountVisibility();
+        // also filter categories based on current type
+        function updateCategoryVisibility() {
+            const typeEl = document.getElementById('Type');
+            const catSelect = document.getElementById('CategoryId');
+            if (!typeEl || !catSelect) return;
+            const type = typeEl.value;
+            for (let i = 0; i < catSelect.options.length; i++) {
+                const opt = catSelect.options[i];
+                const optType = opt.getAttribute('data-type');
+                if (!optType) { opt.style.display = ''; opt.disabled = false; continue; }
+                if (type === 'Transfer') {
+                    // show only Transfer categories or those marked Transfer
+                    if (optType === 'Transfer') { opt.style.display = ''; opt.disabled = false; } else { opt.style.display = 'none'; opt.disabled = true; }
+                } else {
+                    if (optType === type) { opt.style.display = ''; opt.disabled = false; }
+                    else { opt.style.display = 'none'; opt.disabled = true; }
+                }
+            }
+            // if the currently selected category was hidden, clear selection
+            if (catSelect.selectedIndex >= 0) {
+                const sel = catSelect.options[catSelect.selectedIndex];
+                if (sel && sel.style.display === 'none') catSelect.value = '';
+            }
+        }
+        if (typeEl) typeEl.addEventListener('change', updateCategoryVisibility);
+        updateCategoryVisibility();
+    });
+</script>
 
 <div>
     <a asp-action="Index">Back to List</a>
