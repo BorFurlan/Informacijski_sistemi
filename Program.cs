@@ -38,6 +38,9 @@ builder.Services.ConfigureApplicationCookie(options =>
 // Register a dummy email sender (since email confirmation is disabled)
 builder.Services.AddTransient<IEmailSender, FinFriend.Services.NoOpEmailSender>();
 
+//za swagger
+builder.Services.AddSwaggerGen();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -52,6 +55,11 @@ else
     app.UseHsts();
 }
 
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1");
+});
 
 app.UseHttpsRedirection();
 
