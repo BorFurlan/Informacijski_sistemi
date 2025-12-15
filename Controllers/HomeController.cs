@@ -87,11 +87,31 @@ namespace FinFriend.Controllers
                 if (t.DestinationAccountId == accountId) balance += t.Amount;
                 if (t.SourceAccountId == accountId) balance -= t.Amount;
 
-                labels.Add(t.Date.ToString());
+                labels.Add(t.Date.ToString("dd-mm-yyyy hh:mm"));
                 balances.Add(balance);
             }
 
             return Json(new { labels, balances });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetTransactionsByCategory(int? accountId)
+        {
+            var q = _context.Transactions.AsQueryable();
+            if (accountId.HasValue && accountId.Value != 0)
+                q = q.Where(t => t.SourceAccountId == accountId.Value || t.DestinationAccountId == accountId.Value);
+
+            var data = await q
+                .GroupBy(t => t.Category)                 // adjust if Category is a navigation prop
+                .Select(g => new { Category = g.Key, Count = g.Count() })
+                .OrderByDescending(x => x.Count)
+                .ToListAsync();
+                        
+            return Json(new
+            {
+                labels = data.Select(d => d.Category.Name),
+                counts = data.Select(d => d.Count)
+            });
         }
     }
 }

@@ -5,6 +5,8 @@
 
 @model DashboardViewModel
 
+<script src="~/lib/chartjs/chart.js"></script>
+
 <div class="card shadow p-4 text-center">
     <h3 class="mb-3">Total Balance</h3>
     <h1>@Model.TotalBalance €</h1>
@@ -58,17 +60,27 @@
 
 <h4 class="text-center">Account history</h4>
 
+<div class="row mb-4">
+    <div class="col-md-3">
+        <select id="accountId" asp-items="ViewBag.Accounts" class="form-select"></select>
+    </div>
+</div>
+
 <div class="row">
-    <div class="col-md-8 offset-md-2">
+    <div class="col-md-6">
+        <h5>Account Balance Over Time</h5>
         <div class="card shadow-sm p-3 mb-3">
-            <select id="accountId" asp-items="ViewBag.Accounts" class="form-select">
-            </select>
             <canvas id="accountHistoryChart" width="500" height="250"></canvas>
+        </div>
+    </div>
+    <div class="col-md-5">
+        <h5>Transactions by Category</h5>
+        <div class="card shadow-sm p-3 mb-3">
+            <canvas id="transactionsByCategoryChart" width="250" height="250"></canvas>
         </div>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     (function () {
         let myChart = null;
@@ -99,7 +111,6 @@
                         label: 'Balance',
                         data: data.balances,
                         fill: false,
-                        borderColor: 'rgba(75, 192, 192, 1)',
                         tension: 0.1
                     }]
                 },
@@ -113,4 +124,38 @@
         document.addEventListener('DOMContentLoaded', displaySelectedAccountChart);
         document.getElementById('accountId').addEventListener('change', displaySelectedAccountChart);
     })();
+</script>
+
+<script>
+(function(){
+    let catChart = null;
+    async function renderCategoryChart(accountId = "") {
+        const url = '@Url.Action("GetTransactionsByCategory","Home")' + (accountId ? '?accountId=' + accountId : '');
+        const res = await fetch(url);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        if (catChart) catChart.destroy();
+        const ctx = document.getElementById('transactionsByCategoryChart').getContext('2d');
+        catChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Transactions',
+                    data: data.counts,
+                    borderWidth: 1
+                }]
+            },
+            options: { responsive: true, scales: { y: { beginAtZero: true, ticks: { precision:0 } } } }
+        });
+    }
+
+    // initial load for all accounts
+    document.addEventListener('DOMContentLoaded', () => renderCategoryChart(accSel.value));
+
+    // if you have an account <select id="accountId"> and want per-account update:
+    const accSel = document.getElementById('accountId');
+    if (accSel) accSel.addEventListener('change', () => renderCategoryChart(accSel.value));
+})();
 </script>
