@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using FinFriend.Data;
 using FinFriend.Models;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 
 [ApiController]
@@ -10,39 +11,37 @@ using Microsoft.AspNetCore.Identity;
 public class DashboardController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
-    private readonly UserManager<User> _userManager;
+    
 
-    public DashboardController(ApplicationDbContext context, UserManager<User> userManager
-    )
+    public DashboardController(ApplicationDbContext context)
     {
         _context = context;
-        _userManager = userManager;
+    
     }
 
     // GET: api/v1/Dashboard/summary
     [HttpGet("summary")]
     public async Task<IActionResult> GetSummary()
     {
-        var userId = _userManager.GetUserId(User);
-
-        IQueryable<Account> accountsQuery = _context.Accounts.Where(a => a.UserId == userId);
     
-        var accounts = await accountsQuery
-            .Where(a => a.IsIncludedInTotal)
-            .ToListAsync();
 
-        var totalBalance = accounts.Sum(a => a.CurrentBalance);
+        IQueryable<Account> accountsQuery = _context.Accounts;
+    
+       //vse racune povlece
+        var accounts = await accountsQuery.ToListAsync();
+
+        //sesteje samo tistih, ki so vključeni v total
+        var totalBalance = accounts.Where(a => a.IsIncludedInTotal).Sum(a => a.CurrentBalance);
+
+        //transakcije
+        var transactions = await _context.Transactions.ToListAsync();
 
         var summary = new
         {
             TotalBalance = totalBalance,
             AccountCount = accounts.Count,
-            Accounts = accounts.Select(a => new
-            {
-                a.AccountId,
-                a.Name,
-                a.CurrentBalance
-            })
+            IncludedAccountCount = accounts.Count(a => a.IsIncludedInTotal),
+            TransactionCount = transactions.Count
         };
 
         return Ok(summary);
