@@ -78,6 +78,7 @@ namespace FinFriend.Controllers_Api
         [HttpPost]
         public async Task<ActionResult<Account>> PostAccount(Account account)
         {
+            account.CurrentBalance = account.InitialBalance;
             _context.Accounts.Add(account);
             await _context.SaveChangesAsync();
 
