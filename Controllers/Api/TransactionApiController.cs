@@ -78,10 +78,57 @@ namespace FinFriend.Controllers_Api
         [HttpPost]
         public async Task<ActionResult<Transaction>> PostTransaction(Transaction transaction)
         {
+            Account? sourceAccount = null;
+            Account? destinationAccount = null;
+
+            if (transaction.Type == TransactionType.Expense || transaction.Type == TransactionType.Transfer)
+            {
+                if (!transaction.SourceAccountId.HasValue)
+                    return BadRequest("Source account is required.");
+
+                sourceAccount = await _context.Accounts.FindAsync(transaction.SourceAccountId.Value);
+                if (sourceAccount == null)
+                    return BadRequest("Invalid source account.");
+            }
+
+            if (transaction.Type == TransactionType.Income || transaction.Type == TransactionType.Transfer)
+            {
+                if (!transaction.DestinationAccountId.HasValue)
+                    return BadRequest("Destination account is required.");
+
+                destinationAccount = await _context.Accounts.FindAsync(transaction.DestinationAccountId.Value);
+                if (destinationAccount == null)
+                    return BadRequest("Invalid destination account.");
+            }
+
+            // NORMALIZACIJA (ZELO POMEMBNO)
+            if (transaction.Type == TransactionType.Income)
+            {
+                transaction.SourceAccountId = null;
+                transaction.SourceAccount = null;
+            }
+
+            if (transaction.Type == TransactionType.Expense)
+            {
+                transaction.DestinationAccountId = null;
+                transaction.DestinationAccount = null;
+            }
+
+            transaction.SourceAccount = sourceAccount;
+            transaction.DestinationAccount = destinationAccount;
+
             _context.Transactions.Add(transaction);
+
+            // POSODOBITEV STANJA
+            if (sourceAccount != null)
+                sourceAccount.CurrentBalance -= transaction.Amount;
+
+            if (destinationAccount != null)
+                destinationAccount.CurrentBalance += transaction.Amount;
+
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetTransaction", new { id = transaction.TransactionId }, transaction);
+            return Ok(new { success = true });
         }
 
         // DELETE: api/v1/TransactionsApi/5
