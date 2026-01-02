@@ -7,11 +7,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using FinFriend.Data;
 using FinFriend.Models;
+using FinFriend.Filters;
 
 namespace FinFriend.Controllers_Api
 {
     [Route("api/v1/TransactionsApi")]
     [ApiController]
+    [ApiKeyAuth]
     public class TransactionApiController : ControllerBase
     {
         private readonly ApplicationDbContext _context;

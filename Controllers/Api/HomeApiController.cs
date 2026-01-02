@@ -4,10 +4,11 @@ using FinFriend.Data;
 using FinFriend.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-
+using FinFriend.Filters;
 
 [ApiController]
 [Route("api/v1/Dashboard")]
+[ApiKeyAuth]
 public class DashboardController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
