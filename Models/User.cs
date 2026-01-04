@@ -1,5 +1,7 @@
-namespace FinFriend.Models;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
+
+namespace FinFriend.Models;
 
 public class User : IdentityUser
 {
@@ -14,5 +16,12 @@ public class User : IdentityUser
     public ICollection<Account> Accounts { get; set; } = new List<Account>();
     public ICollection<Category> Categories { get; set; } = new List<Category>();
 
+    // Provide a display name for the inherited UserName property
+    [Display(Name = "Username")]
+    public new string UserName
+    {
+        get => base.UserName;
+        set => base.UserName = value;
+    }
 
 }
