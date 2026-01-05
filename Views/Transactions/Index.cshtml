@@ -80,13 +80,13 @@
                 @Html.DisplayFor(modelItem => item.Type)
             </td>
             <td>
-                @(item.SourceAccount?.Name ?? "N/A")
+                @(item.SourceAccount?.Name ?? "")
             </td>
             <td>
-                @(item.DestinationAccount?.Name ?? "N/A")
+                @(item.DestinationAccount?.Name ?? "")
             </td>
             <td>
-                @(item.Category?.Name ?? "N/A")
+                @(item.Category?.Name ?? "")
             </td>
             <td>
                 <a asp-action="Edit" asp-route-id="@item.TransactionId">Edit</a> |

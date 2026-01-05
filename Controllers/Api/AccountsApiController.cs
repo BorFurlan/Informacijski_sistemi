@@ -81,6 +81,7 @@ namespace FinFriend.Controllers_Api
         public async Task<ActionResult<Account>> PostAccount(Account account)
         {
             account.CurrentBalance = account.InitialBalance;
+            account.UserId = "78c504bd-a78a-4b43-88c6-66bd15a4a1c2"; // Privzeti uporabnik za API
             _context.Accounts.Add(account);
             await _context.SaveChangesAsync();
 
