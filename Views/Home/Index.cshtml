@@ -1,8 +1,161 @@
-﻿@{
+﻿@using FinFriend.ViewModels;
+@{
     ViewData["Title"] = "Home Page";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+@model DashboardViewModel
+
+<script src="~/lib/chartjs/chart.js"></script>
+
+<div class="card shadow p-4 text-center">
+    <h3 class="mb-3">Total Balance</h3>
+    <h1>@Model.TotalBalance €</h1>
 </div>
+
+<hr />
+
+<h4 class="text-center">Accounts</h4>
+
+<div class="row">
+@foreach (var acc in Model.Accounts)
+{
+    <div class="col-md-4">
+    <div class="card shadow-sm p-3 mb-3">
+    @{
+            var diff = acc.CurrentBalance - acc.InitialBalance;
+            var diffClass = diff >= 0 ? "text-success" : "text-danger";
+            var sign = diff >= 0 ? "+" : "";
+        }
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">@acc.Name</h5>
+            <span class="fw-bold @diffClass fs-4">@sign@diff €</span>
+        </div>
+
+        <hr class="my-2">
+
+        <div class="d-flex justify-content-between">
+            <span class="text-muted">Balance</span>
+            <span class="fw-bold">@acc.CurrentBalance €</span>
+        </div>
+
+        <div class="d-flex justify-content-between">
+            <span class="text-muted">Included</span>
+            <span class="fw-bold">
+                @(acc.IsIncludedInTotal ? "Yes" : "No")
+            </span>
+        </div>
+        <div class="d-flex justify-content-between">
+            <span class="text-muted">Account type</span>
+            <span class="fw-bold">
+                @(acc.Type)
+            </span>
+        </div>
+
+    </div>
+    </div>
+}
+</div>
+
+<hr />
+
+<h4 class="text-center">Account history</h4>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <select id="accountId" asp-items="ViewBag.Accounts" class="form-select"></select>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <h5>Account Balance Over Time</h5>
+        <div class="card shadow-sm p-3 mb-3">
+            <canvas id="accountHistoryChart" width="500" height="250"></canvas>
+        </div>
+    </div>
+    <div class="col-md-5">
+        <h5>Transactions by Category</h5>
+        <div class="card shadow-sm p-3 mb-3">
+            <canvas id="transactionsByCategoryChart" width="250" height="250"></canvas>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        let myChart = null;
+
+        async function displaySelectedAccountChart() {
+
+            const accountId = document.getElementById('accountId').value;
+            const url = '@Url.Action("GetAccountHistory", "Home")' + '?accountId=' + accountId;
+
+            if (accountId === "") {
+                myChart?.destroy();
+                return;
+            }
+
+            const res = await fetch(url);
+            if (!res.ok) return;
+            const data = await res.json();
+
+            if (myChart) myChart.destroy();
+
+            const ctx = document.getElementById('accountHistoryChart').getContext('2d');
+
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'Balance',
+                        data: data.balances,
+                        fill: false,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: { y: { beginAtZero: false } }
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', displaySelectedAccountChart);
+        document.getElementById('accountId').addEventListener('change', displaySelectedAccountChart);
+    })();
+</script>
+
+<script>
+(function(){
+    let catChart = null;
+    async function renderCategoryChart(accountId = "") {
+        const url = '@Url.Action("GetTransactionsByCategory","Home")' + (accountId ? '?accountId=' + accountId : '');
+        const res = await fetch(url);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        if (catChart) catChart.destroy();
+        const ctx = document.getElementById('transactionsByCategoryChart').getContext('2d');
+        catChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Transactions',
+                    data: data.counts,
+                    borderWidth: 1
+                }]
+            },
+            options: { responsive: true, scales: { y: { beginAtZero: true, ticks: { precision:0 } } } }
+        });
+    }
+
+    // initial load for all accounts
+    document.addEventListener('DOMContentLoaded', () => renderCategoryChart(accSel.value));
+
+    // if you have an account <select id="accountId"> and want per-account update:
+    const accSel = document.getElementById('accountId');
+    if (accSel) accSel.addEventListener('change', () => renderCategoryChart(accSel.value));
+})();
+</script>
